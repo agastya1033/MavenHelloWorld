@@ -2,9 +2,25 @@ trigger:
 - master
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'
 
 steps:
+# ✅ Fix ChromeDriver version to match Chrome
+- script: |
+    sudo apt-get update
+    sudo apt-get install -y unzip curl
+    CHROME_VERSION=$(google-chrome --version | grep -oP '\d+' | head -1)
+    echo "Detected Chrome major version: $CHROME_VERSION"
+    DRIVER_VERSION=$(curl -s "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_$CHROME_VERSION")
+    echo "Using ChromeDriver version: $DRIVER_VERSION"
+    curl -s -o chromedriver.zip "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip"
+    unzip chromedriver.zip
+    sudo mv chromedriver /usr/local/bin/
+    sudo chmod +x /usr/local/bin/chromedriver
+    chromedriver --version
+  displayName: 'Install matching ChromeDriver'
+
+# ✅ Run Maven build and tests
 - task: Maven@3
   inputs:
     mavenPomFile: 'pom.xml'
@@ -12,15 +28,22 @@ steps:
     javaHomeOption: 'JDKVersion'
     jdkVersionOption: '1.11'
     jdkArchitectureOption: 'x64'
-    goals: 'clean install -Dmaven.test.failure.ignore=true'
     publishJUnitResults: true
-    testResultsFiles: '**/surefire-reports/TEST-*.xml'  # ✅ fixed typo
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    goals: 'package'
 
+# Optional: Ignore test failure and continue if needed
+- task: Maven@4
+  inputs:
+    goals: 'clean install -Dmaven.test.failure.ignore=true'
+
+# 📦 Copy WAR
 - task: CopyFiles@2
   inputs:
     Contents: '**/*.war'
     TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
+# 🚀 Publish Artifact
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'

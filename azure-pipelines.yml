@@ -5,7 +5,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-# ✅ Fix ChromeDriver version to match Chrome
+# ✅ Step 1: Install Matching ChromeDriver
 - script: |
     sudo apt-get update
     sudo apt-get install -y unzip curl
@@ -15,12 +15,12 @@ steps:
     echo "Using ChromeDriver version: $DRIVER_VERSION"
     curl -s -o chromedriver.zip "https://chromedriver.storage.googleapis.com/$DRIVER_VERSION/chromedriver_linux64.zip"
     unzip chromedriver.zip
-    sudo mv chromedriver /usr/local/bin/
+    sudo mv chromedriver /usr/local/bin/chromedriver
     sudo chmod +x /usr/local/bin/chromedriver
     chromedriver --version
-  displayName: 'Install matching ChromeDriver'
+  displayName: 'Install Matching ChromeDriver'
 
-# ✅ Run Maven build and tests
+# ✅ Step 2: Maven Build & Test
 - task: Maven@3
   inputs:
     mavenPomFile: 'pom.xml'
@@ -32,18 +32,18 @@ steps:
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     goals: 'package'
 
-# Optional: Ignore test failure and continue if needed
+# ✅ Optional: Continue even if some tests fail
 - task: Maven@4
   inputs:
     goals: 'clean install -Dmaven.test.failure.ignore=true'
 
-# 📦 Copy WAR
+# 📦 Step 3: Copy WAR file
 - task: CopyFiles@2
   inputs:
     Contents: '**/*.war'
     TargetFolder: '$(Build.ArtifactStagingDirectory)'
 
-# 🚀 Publish Artifact
+# 📤 Step 4: Publish Build Artifact
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'

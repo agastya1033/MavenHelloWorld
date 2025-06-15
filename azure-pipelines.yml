@@ -20,6 +20,10 @@ steps:
     publishJUnitResults: true
     testResultsFiles: '**/surefre-reports/TEST-*.xml'
     goals: 'package'
+- task: Maven@4
+  inputs:
+    goals: 'clean install -Dmaven.test.failure.ignore=true'
+
 - task: CopyFiles@2
   inputs:
     Contents: '**/*.war'
